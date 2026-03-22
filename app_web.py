@@ -8,10 +8,23 @@ import re
 
 st.set_page_config(page_title="English Trainer PRO", page_icon="🎓")
 
-# Функция для нормализации текста (убираем пунктуацию и раскрываем сокращения)
+# 1. СЛОВАРЬ СИНОНИМОВ (можно дополнять через запятую)
+SYNONYMS = {
+    "subway": "metro",
+    "metro": "subway",
+    "taxi": "cab",
+    "cab": "taxi",
+    "pavement": "sidewalk",
+    "sidewalk": "pavement",
+    "autumn": "fall",
+    "fall": "autumn",
+    "film": "movie",
+    "movie": "film"
+}
+
 def normalize(text):
     text = text.lower().strip()
-    # Раскрываем основные сокращения для честной проверки
+    # Раскрываем сокращения
     replacements = {
         "i'm": "i am", "it's": "it is", "don't": "do not", 
         "doesn't": "does not", "can't": "cannot", "you're": "you are",
@@ -19,18 +32,23 @@ def normalize(text):
     }
     for short, full in replacements.items():
         text = text.replace(short, full)
-    # Убираем всё, кроме букв и цифр
-    return re.sub(r'[^\w\s]', '', text)
+    
+    # Убираем пунктуацию
+    text = re.sub(r'[^\w\s]', '', text)
+    
+    # ЗАМЕНА СИНОНИМОВ: разбиваем фразу на слова и проверяем каждое
+    words = text.split()
+    final_words = [SYNONYMS.get(w, w) for w in words]
+    return " ".join(final_words)
 
 def speak(text):
     tts = gTTS(text=text, lang='en')
     ts = int(time.time())
     filename = f"temp_{ts}.mp3"
     tts.save(filename)
-    # Используем нативный компонент Streamlit для надежности
+    # Используем стандартный плеер для стабильности на Mac/iOS
     st.audio(filename, format="audio/mp3", autoplay=True)
-    # Удаляем файл через небольшую паузу (в облаке файлы хранятся временно)
-    os.remove(filename)
+    # Файл удалится сам при следующем запуске или очистке сервера
 
 def load_data(file_path):
     if not os.path.exists(file_path): return []
@@ -41,9 +59,9 @@ def load_data(file_path):
 if 'current_mode' not in st.session_state:
     st.session_state.current_mode = "Предложения"
 
-selected_mode = st.sidebar.selectbox("Выберите режим", ["Слова", "Глаголы", "Предложения"], index=["Слова", "Глаголы", "Предложения"].index(st.session_state.current_mode))
+selected_mode = st.sidebar.selectbox("Выберите режим", ["Слова", "Глаголы", "Предложения"], 
+                                     index=["Слова", "Глаголы", "Предложения"].index(st.session_state.current_mode))
 
-# Если режим изменился в меню — сбрасываем текущее задание мгновенно
 if selected_mode != st.session_state.current_mode:
     st.session_state.current_mode = selected_mode
     st.session_state.current_pair = None
@@ -65,14 +83,13 @@ if data:
     eng, rus = st.session_state.current_pair
     st.subheader(f"Как переводится: **{rus}**?")
     
-    user_answer = st.text_input("Ваш ответ:", key=f"ans_{eng}", disabled=st.session_state.answered).strip()
+    # Генерация уникального ключа для поля ввода, чтобы оно очищалось
+    user_answer = st.text_input("Ваш ответ:", key=f"ans_{eng}_{st.session_state.current_mode}", disabled=st.session_state.answered).strip()
 
     col1, col2 = st.columns(2)
     with col1:
-        check_btn = st.button("Проверить ✅")
-        if check_btn and not st.session_state.answered:
+        if st.button("Проверить ✅") and not st.session_state.answered:
             st.session_state.answered = True
-            # Сравниваем нормализованные версии
             if normalize(user_answer) == normalize(eng):
                 st.session_state.correct = True
                 st.session_state.score += 1
@@ -88,6 +105,8 @@ if data:
     if st.session_state.answered:
         if st.session_state.correct:
             st.success(f"Правильно! 🎉 Оригинал: {eng}")
+            # Автоматическая озвучка при правильном ответе (по желанию)
+            # speak(eng) 
         else:
             st.error(f"Ошибка! Правильно было: {eng}")
         
