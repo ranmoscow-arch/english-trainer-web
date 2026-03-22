@@ -1,0 +1,108 @@
+travel - путешествовать
+beautiful - красивый
+weather - погода
+holiday / vocation - отпуск
+mountain - гора
+village - деревня
+bookstore - книжный магазин
+password - пароль
+paste - вставить
+login - логин
+digital - цифровой
+crossing - переход
+begun - начали
+city hall - мэрия
+go to the bathroom - воспользоваться туалетом
+monthly - на месяц
+public transportation - общественный транспорт
+ma'am - мэм
+can't we - не так ли
+get better - поправиться
+aspirin - аспирин
+instructions - инструкция
+get back - вернетесь
+soul - душа
+gallery - галерея
+carousel - карусель
+pier - пирс
+direct - прямой
+as well as - а также
+business card - визитная карточка
+signature - подпись
+cucumber - огурец
+smell - запах
+sour - кислый
+broccoli - брокколи
+check the box - поставить галочку
+played - играли
+annual - ежегодный
+coach - тренер
+glacier - ледник
+state - штат
+Texas - Техас
+cactus - кактус
+may not - возможно не
+part-time - на полставки
+feel upset - расстраиваюсь
+come over - зайти в гости
+juicy - сочный
+bitter - горький
+roll - булочка
+mixer - миксер
+given - дали
+recent - недавний
+signed - подписано
+secretary - секретарь
+will be - будет
+lying - лежит
+scuba dive - плавать с аквалангом
+until then - до тех пор
+feel sad - грущу
+pleased to meet you - рада познакомиться с вами
+feel nervous - нервничаю
+skill - навык
+thirsty - хочу пить
+mix - смешать
+made from - делаются из
+traditional - традиционный
+stolen - украденную
+arrest - арестовать
+criminal - преступник
+everyone - все
+over here - вот здесь
+hostel - хостел
+lovely - чудесный
+foreigner - иностранец
+depart - уходит
+elderly - пожилых
+due - ожидается
+attention - внимание
+ouch - ай
+flu - грипп
+pharmacist - фармацевт
+tissue - салфетка
+could you - не могли бы вы
+couldn't you - нельзя ли
+temple - храм
+go in - заходите
+spam - спам
+blocked - заблокирован
+virus - вирус
+plug - вилка (штекер)
+vacuum - пылесос
+display - дисплей
+mop - швабра
+cupboard - шкаф
+blender - блендер
+microwave - микроволновая печь
+plug in - включить в розетку
+timer - таймер
+back up - отойти
+user - пользователь
+tablet - планшет
+password - пароль
+paste - вставить
+login - логин
+digital - цифровой
+memory - память
+flash drive - флешка
