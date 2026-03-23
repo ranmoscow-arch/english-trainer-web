@@ -11,6 +11,7 @@ st.set_page_config(page_title="English Trainer PRO", page_icon="🎓")
 def normalize(text):
     """Очистка текста для корректного сравнения."""
     text = text.lower().strip()
+    # Раскрываем сокращения
     replacements = {
         "i'm": "i am", "it's": "it is", "don't": "do not", 
         "doesn't": "does not", "can't": "cannot", "you're": "you are",
@@ -19,6 +20,7 @@ def normalize(text):
     for short, full in replacements.items():
         text = text.replace(short, full)
     
+    # Убираем пунктуацию
     text = re.sub(r'[^\w\s]', '', text)
     
     # Игнорируем только 'some' (артикли проверяются строго)
@@ -26,26 +28,29 @@ def normalize(text):
     words = text.split()
     filtered_words = [w for w in words if w not in ignored_words]
     
+    # Синонимы
     synonyms = {"subway": "metro", "metro": "subway", "taxi": "cab", "cab": "taxi"}
     final_words = [synonyms.get(w, w) for w in filtered_words]
     
     return " ".join(final_words)
 
 def speak(text):
-    """Генерация и воспроизведение озвучки без использования параметра key."""
+    """Генерация и воспроизведение озвучки. Исправлено для iPhone и старых версий Streamlit."""
     try:
+        # Берем только первый вариант до слэша
         clean_audio_text = text.split('/')[0].strip()
         tts = gTTS(text=clean_audio_text, lang='en')
         
         # Создаем уникальное имя файла через время и случайное число
-        # Это гарантирует, что браузер (особенно на iOS) увидит "новый" файл
+        # Это заставляет мобильные браузеры обновлять плеер
         ts = int(time.time() * 1000)
         filename = f"temp_{ts}_{random.randint(1, 9999)}.mp3"
         
         tts.save(filename)
+        # ВАЖНО: не используем параметр 'key', чтобы не было ошибок на старых версиях
         st.audio(filename, format="audio/mp3")
         
-        # Небольшая пауза, чтобы файл успел подгрузиться в плеер перед удалением
+        # Даем системе полсекунды подгрузить файл и удаляем его, чтобы не копить мусор
         time.sleep(0.5) 
         if os.path.exists(filename):
             os.remove(filename)
@@ -75,9 +80,10 @@ if selected_mode != st.session_state.current_mode:
     st.session_state.answered = False
     st.rerun()
 
+# Правила для глаголов (ваше пожелание)
 if st.session_state.current_mode == "Неправильные глаголы":
     st.sidebar.markdown("---")
-    st.sidebar.info("**Правила ввода:**\n\nНапишите все 3 формы через пробел. Если V2=V3, пишите только две.")
+    st.sidebar.info("**Правила ввода:**\n\nНапишите все 3 формы через пробел. Если V2 = V3, пишите только две.")
 
 if 'score' not in st.session_state: st.session_state.score = 0
 if 'current_pair' not in st.session_state: st.session_state.current_pair = None
@@ -98,6 +104,7 @@ if data:
     st.subheader("Переведите на английский:")
     st.info(f"👉 {rus}")
     
+    # Уникальный ключ для поля ввода зависит от фразы
     user_answer = st.text_input("Ваш ответ:", key=f"input_{eng}", disabled=st.session_state.answered).strip()
 
     col1, col2 = st.columns(2)
@@ -132,7 +139,7 @@ if data:
 
     st.sidebar.write(f"### Текущая серия: {st.session_state.score}")
 else:
-    st.warning("Файлы с данными не найдены.")
+    st.warning("База данных пуста или файлы .txt не найдены.")
 
 st.sidebar.markdown("---")
-st.sidebar.markdown("### 👨‍💻 Автор проекта:\n**Р. Андрей**\n\nСпециально для тебя ❤️")
+st.sidebar.markdown(f"### 👨‍💻 Автор проекта:\n**Р. Андрей**\n\nСпециально для тебя ❤️")
