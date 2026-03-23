@@ -9,12 +9,24 @@ import base64
 # Настройка страницы
 st.set_page_config(page_title="English Trainer PRO", page_icon="🎓")
 
-# --- СТИЛИЗАЦИЯ (УВЕЛИЧЕННЫЙ ШРИФТ ДЛЯ IPHONE) ---
+# --- УЛУЧШЕННАЯ СТИЛИЗАЦИЯ (ШРИФТ, ЯРКОСТЬ И ПЕРЕНОС) ---
 st.markdown("""
     <style>
-    input {
-        font-size: 22px !important;
+    /* Увеличиваем шрифт и делаем текст ярким даже в заблокированном состоянии */
+    .stTextArea textarea {
+        font-size: 20px !important;
+        color: #31333F !important; /* Темный цвет текста */
+        -webkit-text-fill-color: #31333F !important; /* Для Safari на iPhone */
+        opacity: 1 !important; /* Убираем прозрачность */
     }
+    
+    /* Делаем само поле более заметным */
+    .stTextArea [data-baseweb="textarea"] {
+        background-color: #ffffff !important;
+        border: 2px solid #e0e0e0 !important;
+    }
+
+    /* Заголовок задания покрупнее */
     .stSecondaryBlock {
         font-size: 20px !important;
     }
@@ -39,7 +51,6 @@ def normalize(text):
     return " ".join(final_words)
 
 def speak(text):
-    """Воспроизведение через Base64 с попыткой автозапуска."""
     try:
         clean_audio_text = text.split('/')[0].strip()
         tts = gTTS(text=clean_audio_text, lang='en')
@@ -49,14 +60,12 @@ def speak(text):
         with open(filename, "rb") as f:
             data = f.read()
             b64 = base64.b64encode(data).decode()
-            # HTML с autoplay для iPhone
             md = f"""
                 <audio autoplay="true">
                     <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
                 </audio>
                 """
             st.markdown(md, unsafe_allow_html=True)
-        
         os.remove(filename)
     except Exception as e:
         st.error(f"Ошибка звука: {e}")
@@ -66,7 +75,7 @@ def load_data(file_path):
     with open(file_path, "r", encoding="utf-8") as f:
         return [line.strip().split(" - ") for line in f if " - " in line]
 
-# --- ЛОГИКА ИНТЕРФЕЙСА ---
+# --- ЛОГИКА ---
 modes = ["Слова", "Неправильные глаголы", "Предложения"]
 if 'current_mode' not in st.session_state: st.session_state.current_mode = "Предложения"
 
@@ -79,20 +88,15 @@ if selected_mode != st.session_state.current_mode:
     st.session_state.answered = False
     st.rerun()
 
-# --- ПРАВИЛА (ТОЛЬКО ДЛЯ ГЛАГОЛОВ) ---
 if st.session_state.current_mode == "Неправильные глаголы":
     st.sidebar.markdown("---")
-    st.sidebar.info("""
-    **Правила ввода:**
-    Напишите 3 формы через пробел. Если V2 = V3, пишите только две.
-    """)
+    st.sidebar.info("Напишите 3 формы через пробел. Если V2 = V3, пишите только две.")
 
 if 'score' not in st.session_state: st.session_state.score = 0
 if 'current_pair' not in st.session_state: st.session_state.current_pair = None
 if 'answered' not in st.session_state: st.session_state.answered = False
 
 st.title("English Trainer PRO 🎓")
-st.sidebar.write("---")
 
 file_map = {"Слова": "words.txt", "Неправильные глаголы": "verbs.txt", "Предложения": "sentences.txt"}
 data = load_data(file_map[st.session_state.current_mode])
@@ -105,8 +109,14 @@ if data:
     st.subheader("Переведите на английский:")
     st.info(f"👉 {rus}")
     
-    # Плейсхолдер помогает понять, куда тыкать на маленьком экране
-    user_answer = st.text_input("Ваш ответ:", key=f"input_{hash(eng)}", disabled=st.session_state.answered, placeholder="Введите перевод...").strip()
+    # ИСПОЛЬЗУЕМ TEXT_AREA ДЛЯ ПЕРЕНОСА СТРОК И ТОЛЩИНЫ
+    user_answer = st.text_area(
+        "Ваш ответ:", 
+        key=f"input_{hash(eng)}", 
+        disabled=st.session_state.answered, 
+        placeholder="Введите перевод здесь...",
+        height=100 # Высота поля
+    ).strip()
 
     col1, col2 = st.columns(2)
     with col1:
@@ -134,10 +144,7 @@ if data:
 
     st.sidebar.write(f"### Текущая серия: {st.session_state.score}")
 else:
-    st.warning("База данных пуста.")
+    st.warning("Файлы не найдены.")
 
-# --- ПОДПИСЬ ---
 st.sidebar.markdown("---")
-st.sidebar.markdown("### 👨‍💻 Автор проекта:")
-st.sidebar.subheader("Р. Андрей")
-st.sidebar.write("Специально для тебя ❤️")
+st.sidebar.markdown("### 👨‍💻 Автор: Р. Андрей\nСпециально для тебя ❤️")
