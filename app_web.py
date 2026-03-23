@@ -5,12 +5,11 @@ import time
 from gtts import gTTS
 import re
 
-# Настройка страницы
 st.set_page_config(page_title="English Trainer PRO", page_icon="🎓")
 
-# Функция нормализации для проверки
 def normalize(text):
     text = text.lower().strip()
+    # 1. Раскрываем сокращения
     replacements = {
         "i'm": "i am", "it's": "it is", "don't": "do not", 
         "doesn't": "does not", "can't": "cannot", "you're": "you are",
@@ -18,13 +17,25 @@ def normalize(text):
     }
     for short, full in replacements.items():
         text = text.replace(short, full)
-    return re.sub(r'[^\w\s]', '', text)
-
-# Словарь синонимов
-SYNONYMS = {"subway": "metro", "metro": "subway", "taxi": "cab", "cab": "taxi"}
+    
+    # 2. Убираем пунктуацию
+    text = re.sub(r'[^\w\s]', '', text)
+    
+    # 3. ИГНОРИРУЕМ ТОЛЬКО 'some' (артикли теперь ПРОВЕРЯЮТСЯ)
+    ignored_words = {'some'}
+    words = text.split()
+    filtered_words = [w for w in words if w not in ignored_words]
+    
+    # 4. ПРОВЕРКА СИНОНИМОВ (метро/сабвей)
+    synonyms = {"subway": "metro", "metro": "subway", "taxi": "cab", "cab": "taxi"}
+    final_words = [synonyms.get(w, w) for w in filtered_words]
+    
+    return " ".join(final_words)
 
 def speak(text):
-    tts = gTTS(text=text, lang='en')
+    # Озвучиваем только первый вариант (до знака /)
+    clean_audio_text = text.split('/')[0].strip()
+    tts = gTTS(text=clean_audio_text, lang='en')
     ts = int(time.time())
     filename = f"temp_{ts}.mp3"
     tts.save(filename)
@@ -35,11 +46,10 @@ def load_data(file_path):
     with open(file_path, "r", encoding="utf-8") as f:
         return [line.strip().split(" - ") for line in f if " - " in line]
 
-# --- ИНТЕРФЕЙС И ЛОГИКА ---
+# --- ИНТЕРФЕЙС ---
 if 'current_mode' not in st.session_state:
     st.session_state.current_mode = "Предложения"
 
-# Боковая панель
 st.sidebar.markdown("# 📚 Меню")
 selected_mode = st.sidebar.selectbox("Выберите режим", ["Слова", "Глаголы", "Предложения"], 
                                      index=["Слова", "Глаголы", "Предложения"].index(st.session_state.current_mode))
@@ -55,8 +65,6 @@ if 'current_pair' not in st.session_state: st.session_state.current_pair = None
 if 'answered' not in st.session_state: st.session_state.answered = False
 
 st.title("English Trainer PRO 🎓")
-
-# Тематический рисунок в сайдбаре
 st.sidebar.write("---")
 st.sidebar.title("🇬🇧 📖 ✍️")
 
@@ -67,17 +75,20 @@ if data:
         st.session_state.current_pair = random.choice(data)
 
     eng, rus = st.session_state.current_pair
-    # ИЗМЕНЕНИЕ ЗДЕСЬ: убрали знак вопроса в конце, заменили на двоеточие
     st.subheader(f"Переведите на английский:")
     st.info(f"👉 {rus}")
     
-    user_answer = st.text_input("Ваш ответ:", key=f"ans_{eng}_{st.session_state.current_mode}", disabled=st.session_state.answered).strip()
+    user_answer = st.text_input("Ваш ответ:", key=f"ans_{eng}", disabled=st.session_state.answered).strip()
 
     col1, col2 = st.columns(2)
     with col1:
         if st.button("Проверить ✅") and not st.session_state.answered:
             st.session_state.answered = True
-            if normalize(user_answer) == normalize(eng):
+            # Разделяем варианты по слэшу и проверяем каждый
+            correct_options = [opt.strip() for opt in eng.split('/')]
+            is_correct = any(normalize(user_answer) == normalize(opt) for opt in correct_options)
+            
+            if is_correct:
                 st.session_state.correct = True
                 st.session_state.score += 1
             else:
@@ -103,7 +114,6 @@ if data:
 
     st.sidebar.write(f"### Текущая серия: {st.session_state.score}")
 
-# ПОДПИСЬ
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 👨‍💻 Автор проекта:")
 st.sidebar.subheader("Р. Андрей")
