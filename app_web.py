@@ -9,9 +9,7 @@ import re
 st.set_page_config(page_title="English Trainer PRO", page_icon="🎓")
 
 def normalize(text):
-    """Очистка текста для корректного сравнения."""
     text = text.lower().strip()
-    # Раскрываем сокращения
     replacements = {
         "i'm": "i am", "it's": "it is", "don't": "do not", 
         "doesn't": "does not", "can't": "cannot", "you're": "you are",
@@ -19,60 +17,52 @@ def normalize(text):
     }
     for short, full in replacements.items():
         text = text.replace(short, full)
-    
-    # Убираем пунктуацию
     text = re.sub(r'[^\w\s]', '', text)
-    
-    # Игнорируем только 'some' (артикли проверяются строго)
     ignored_words = {'some'}
     words = text.split()
     filtered_words = [w for w in words if w not in ignored_words]
-    
-    # Синонимы
     synonyms = {"subway": "metro", "metro": "subway", "taxi": "cab", "cab": "taxi"}
     final_words = [synonyms.get(w, w) for w in filtered_words]
-    
     return " ".join(final_words)
 
 def speak(text):
-    """Генерация и воспроизведение озвучки. Исправлено для iPhone и старых версий Streamlit."""
+    """Исправленная функция для работы на iPhone."""
     try:
-        # Берем только первый вариант до слэша
         clean_audio_text = text.split('/')[0].strip()
         tts = gTTS(text=clean_audio_text, lang='en')
         
-        # Создаем уникальное имя файла через время и случайное число
-        # Это заставляет мобильные браузеры обновлять плеер
-        ts = int(time.time() * 1000)
-        filename = f"temp_{ts}_{random.randint(1, 9999)}.mp3"
-        
+        # Создаем папку для аудио, если её нет
+        if not os.path.exists("temp_audio"):
+            os.makedirs("temp_audio")
+            
+        # Очищаем старые файлы (которым больше 1 минуты), чтобы не копились
+        now = time.time()
+        for f in os.listdir("temp_audio"):
+            f_path = os.path.join("temp_audio", f)
+            if os.stat(f_path).st_mtime < now - 60:
+                os.remove(f_path)
+
+        filename = f"temp_audio/audio_{int(now)}.mp3"
         tts.save(filename)
-        # ВАЖНО: не используем параметр 'key', чтобы не было ошибок на старых версиях
-        st.audio(filename, format="audio/mp3")
         
-        # Даем системе полсекунды подгрузить файл и удаляем его, чтобы не копить мусор
-        time.sleep(0.5) 
-        if os.path.exists(filename):
-            os.remove(filename)
+        # Выводим плеер. На iPhone важно, чтобы пользователь сам нажал Play, 
+        # если автоплей заблокирован системой.
+        st.audio(filename, format="audio/mp3")
             
     except Exception as e:
         st.error(f"Ошибка озвучки: {e}")
 
 def load_data(file_path):
-    if not os.path.exists(file_path):
-        return []
+    if not os.path.exists(file_path): return []
     with open(file_path, "r", encoding="utf-8") as f:
         return [line.strip().split(" - ") for line in f if " - " in line]
 
-# --- ИНТЕРФЕЙС ---
+# --- ОСНОВНОЙ ИНТЕРФЕЙС ---
 modes = ["Слова", "Неправильные глаголы", "Предложения"]
-
-if 'current_mode' not in st.session_state:
-    st.session_state.current_mode = "Предложения"
+if 'current_mode' not in st.session_state: st.session_state.current_mode = "Предложения"
 
 st.sidebar.markdown("# 📚 Меню")
-selected_mode = st.sidebar.selectbox("Выберите режим", modes, 
-                                     index=modes.index(st.session_state.current_mode))
+selected_mode = st.sidebar.selectbox("Выберите режим", modes, index=modes.index(st.session_state.current_mode))
 
 if selected_mode != st.session_state.current_mode:
     st.session_state.current_mode = selected_mode
@@ -80,18 +70,12 @@ if selected_mode != st.session_state.current_mode:
     st.session_state.answered = False
     st.rerun()
 
-# Правила для глаголов (ваше пожелание)
-if st.session_state.current_mode == "Неправильные глаголы":
-    st.sidebar.markdown("---")
-    st.sidebar.info("**Правила ввода:**\n\nНапишите все 3 формы через пробел. Если V2 = V3, пишите только две.")
-
 if 'score' not in st.session_state: st.session_state.score = 0
 if 'current_pair' not in st.session_state: st.session_state.current_pair = None
 if 'answered' not in st.session_state: st.session_state.answered = False
 
 st.title("English Trainer PRO 🎓")
 st.sidebar.write("---")
-st.sidebar.title("🇬🇧 📖 ✍️")
 
 file_map = {"Слова": "words.txt", "Неправильные глаголы": "verbs.txt", "Предложения": "sentences.txt"}
 data = load_data(file_map[st.session_state.current_mode])
@@ -104,7 +88,6 @@ if data:
     st.subheader("Переведите на английский:")
     st.info(f"👉 {rus}")
     
-    # Уникальный ключ для поля ввода зависит от фразы
     user_answer = st.text_input("Ваш ответ:", key=f"input_{eng}", disabled=st.session_state.answered).strip()
 
     col1, col2 = st.columns(2)
@@ -113,13 +96,9 @@ if data:
             st.session_state.answered = True
             correct_options = [opt.strip() for opt in eng.split('/')]
             is_correct = any(normalize(user_answer) == normalize(opt) for opt in correct_options)
-            
-            if is_correct:
-                st.session_state.correct = True
-                st.session_state.score += 1
-            else:
-                st.session_state.correct = False
-                st.session_state.score = 0
+            st.session_state.correct = is_correct
+            if is_correct: st.session_state.score += 1
+            else: st.session_state.score = 0
             st.rerun()
 
     with col2:
@@ -127,11 +106,8 @@ if data:
             speak(eng)
 
     if st.session_state.answered:
-        if st.session_state.correct:
-            st.success(f"Правильно! 🎉 Оригинал: {eng}")
-        else:
-            st.error(f"Ошибка! Правильно было: {eng}")
-        
+        if st.session_state.correct: st.success(f"Правильно! 🎉 {eng}")
+        else: st.error(f"Ошибка! Правильно: {eng}")
         if st.button("Следующее задание ➡️"):
             st.session_state.current_pair = random.choice(data)
             st.session_state.answered = False
@@ -139,7 +115,7 @@ if data:
 
     st.sidebar.write(f"### Текущая серия: {st.session_state.score}")
 else:
-    st.warning("База данных пуста или файлы .txt не найдены.")
+    st.warning("Файлы не найдены.")
 
 st.sidebar.markdown("---")
-st.sidebar.markdown(f"### 👨‍💻 Автор проекта:\n**Р. Андрей**\n\nСпециально для тебя ❤️")
+st.sidebar.markdown("### 👨‍💻 Автор: Р. Андрей")
