@@ -41,12 +41,20 @@ def speak(text, key="default"):
         clean_audio_text = text.split('/')[0].strip()
         tts = gTTS(text=clean_audio_text, lang='en')
         ts = int(time.time())
-        filename = f"temp_{ts}.mp3"
+        # Создаем уникальное имя файла
+        filename = f"temp_{ts}_{random.randint(0, 1000)}.mp3"
         tts.save(filename)
-        # Использование уникального ключа решает проблему DuplicateElementId на iPhone
-        st.audio(filename, format="audio/mp3", autoplay=True, key=f"audio_{key}_{ts}")
+        
+        # Убираем параметр key из st.audio, так как ваша версия Streamlit его не поддерживает
+        st.audio(filename, format="audio/mp3")
     except Exception as e:
         st.error(f"Ошибка озвучки: {e}")
+
+# ... в блоке с кнопками ...
+
+    with col2:
+        if st.button("Прослушать 🔊"):
+            speak(eng) # Просто вызываем без ключа
 
 def load_data(file_path):
     """Загрузка строк из текстовых файлов."""
