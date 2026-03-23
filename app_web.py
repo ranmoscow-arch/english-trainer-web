@@ -4,6 +4,7 @@ import os
 import time
 from gtts import gTTS
 import re
+import base64
 
 # Настройка страницы
 st.set_page_config(page_title="English Trainer PRO", page_icon="🎓")
@@ -26,28 +27,23 @@ def normalize(text):
     return " ".join(final_words)
 
 def speak(text):
-    """Исправленная функция для работы на iPhone."""
+    """Метод Base64: работает на iPhone без создания временных файлов."""
     try:
         clean_audio_text = text.split('/')[0].strip()
         tts = gTTS(text=clean_audio_text, lang='en')
         
-        # Создаем папку для аудио, если её нет
-        if not os.path.exists("temp_audio"):
-            os.makedirs("temp_audio")
-            
-        # Очищаем старые файлы (которым больше 1 минуты), чтобы не копились
-        now = time.time()
-        for f in os.listdir("temp_audio"):
-            f_path = os.path.join("temp_audio", f)
-            if os.stat(f_path).st_mtime < now - 60:
-                os.remove(f_path)
-
-        filename = f"temp_audio/audio_{int(now)}.mp3"
+        # Сохраняем в память, а не на диск
+        filename = f"temp_audio_{random.randint(1, 1000)}.mp3"
         tts.save(filename)
         
-        # Выводим плеер. На iPhone важно, чтобы пользователь сам нажал Play, 
-        # если автоплей заблокирован системой.
-        st.audio(filename, format="audio/mp3")
+        with open(filename, "rb") as f:
+            data = f.read()
+            b64 = base64.b64encode(data).decode()
+            # Создаем HTML-плеер, который Safari не блокирует
+            md = f'<audio controls src="data:audio/mp3;base64,{b64}"></audio>'
+            st.markdown(md, unsafe_allow_html=True)
+        
+        os.remove(filename) # Удаляем сразу после кодирования
             
     except Exception as e:
         st.error(f"Ошибка озвучки: {e}")
@@ -57,7 +53,7 @@ def load_data(file_path):
     with open(file_path, "r", encoding="utf-8") as f:
         return [line.strip().split(" - ") for line in f if " - " in line]
 
-# --- ОСНОВНОЙ ИНТЕРФЕЙС ---
+# --- ИНТЕРФЕЙС ---
 modes = ["Слова", "Неправильные глаголы", "Предложения"]
 if 'current_mode' not in st.session_state: st.session_state.current_mode = "Предложения"
 
@@ -88,7 +84,8 @@ if data:
     st.subheader("Переведите на английский:")
     st.info(f"👉 {rus}")
     
-    user_answer = st.text_input("Ваш ответ:", key=f"input_{eng}", disabled=st.session_state.answered).strip()
+    # Чтобы избежать ошибок дубликатов на iPhone, ключ ввода всегда уникален
+    user_answer = st.text_input("Ваш ответ:", key=f"input_{hash(eng)}", disabled=st.session_state.answered).strip()
 
     col1, col2 = st.columns(2)
     with col1:
@@ -108,6 +105,12 @@ if data:
     if st.session_state.answered:
         if st.session_state.correct: st.success(f"Правильно! 🎉 {eng}")
         else: st.error(f"Ошибка! Правильно: {eng}")
+        
+        # Кнопка озвучки появляется и после ответа для закрепления
+        if not st.session_state.correct:
+             if st.button("Послушать правильный ответ 🔊"):
+                 speak(eng)
+
         if st.button("Следующее задание ➡️"):
             st.session_state.current_pair = random.choice(data)
             st.session_state.answered = False
