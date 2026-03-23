@@ -9,24 +9,24 @@ import base64
 # Настройка страницы
 st.set_page_config(page_title="English Trainer PRO", page_icon="🎓")
 
-# --- УЛУЧШЕННАЯ СТИЛИЗАЦИЯ (ШРИФТ, ЯРКОСТЬ И ПЕРЕНОС) ---
+# --- СТИЛИЗАЦИЯ (КРУПНЫЙ ШРИФТ, ЯРКОСТЬ И ПЕРЕНОС СТРОК) ---
 st.markdown("""
     <style>
-    /* Увеличиваем шрифт и делаем текст ярким даже в заблокированном состоянии */
+    /* Поле ввода: крупный текст и яркость на iPhone */
     .stTextArea textarea {
-        font-size: 20px !important;
-        color: #31333F !important; /* Темный цвет текста */
-        -webkit-text-fill-color: #31333F !important; /* Для Safari на iPhone */
-        opacity: 1 !important; /* Убираем прозрачность */
+        font-size: 22px !important;
+        color: #31333F !important;
+        -webkit-text-fill-color: #31333F !important;
+        opacity: 1 !important;
     }
     
-    /* Делаем само поле более заметным */
+    /* Делаем поле ввода более заметным */
     .stTextArea [data-baseweb="textarea"] {
         background-color: #ffffff !important;
         border: 2px solid #e0e0e0 !important;
     }
 
-    /* Заголовок задания покрупнее */
+    /* Увеличиваем шрифт заголовков заданий */
     .stSecondaryBlock {
         font-size: 20px !important;
     }
@@ -34,7 +34,17 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 def normalize(text):
+    """Улучшенная очистка текста: убирает точки и фиксирует апострофы iPhone."""
+    if not text:
+        return ""
+        
     text = text.lower().strip()
+    
+    # Исправляем специфические апострофы iPhone и убираем точки
+    text = text.replace('’', "'").replace('‘', "'")
+    text = re.sub(r'[.,!?]', '', text)
+    
+    # Раскрываем сокращения
     replacements = {
         "i'm": "i am", "it's": "it is", "don't": "do not", 
         "doesn't": "does not", "can't": "cannot", "you're": "you are",
@@ -42,15 +52,20 @@ def normalize(text):
     }
     for short, full in replacements.items():
         text = text.replace(short, full)
+    
+    # Очистка от двойных пробелов и лишних символов
     text = re.sub(r'[^\w\s]', '', text)
-    ignored_words = {'some'}
-    words = text.split()
-    filtered_words = [w for w in words if w not in ignored_words]
+    text = " ".join(text.split())
+    
+    # Синонимы
     synonyms = {"subway": "metro", "metro": "subway", "taxi": "cab", "cab": "taxi"}
-    final_words = [synonyms.get(w, w) for w in filtered_words]
+    words = text.split()
+    final_words = [synonyms.get(w, w) for w in words]
+    
     return " ".join(final_words)
 
 def speak(text):
+    """Воспроизведение звука для iOS через Base64 (без ошибок)."""
     try:
         clean_audio_text = text.split('/')[0].strip()
         tts = gTTS(text=clean_audio_text, lang='en')
@@ -60,6 +75,7 @@ def speak(text):
         with open(filename, "rb") as f:
             data = f.read()
             b64 = base64.b64encode(data).decode()
+            # Автоплей для iPhone
             md = f"""
                 <audio autoplay="true">
                     <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
@@ -68,14 +84,14 @@ def speak(text):
             st.markdown(md, unsafe_allow_html=True)
         os.remove(filename)
     except Exception as e:
-        st.error(f"Ошибка звука: {e}")
+        st.error(f"Ошибка озвучки: {e}")
 
 def load_data(file_path):
     if not os.path.exists(file_path): return []
     with open(file_path, "r", encoding="utf-8") as f:
         return [line.strip().split(" - ") for line in f if " - " in line]
 
-# --- ЛОГИКА ---
+# --- ОСНОВНАЯ ЛОГИКА ---
 modes = ["Слова", "Неправильные глаголы", "Предложения"]
 if 'current_mode' not in st.session_state: st.session_state.current_mode = "Предложения"
 
@@ -88,6 +104,7 @@ if selected_mode != st.session_state.current_mode:
     st.session_state.answered = False
     st.rerun()
 
+# Правила только для глаголов
 if st.session_state.current_mode == "Неправильные глаголы":
     st.sidebar.markdown("---")
     st.sidebar.info("Напишите 3 формы через пробел. Если V2 = V3, пишите только две.")
@@ -109,13 +126,13 @@ if data:
     st.subheader("Переведите на английский:")
     st.info(f"👉 {rus}")
     
-    # ИСПОЛЬЗУЕМ TEXT_AREA ДЛЯ ПЕРЕНОСА СТРОК И ТОЛЩИНЫ
+    # Используем TextArea для переноса строк и толщины
     user_answer = st.text_area(
         "Ваш ответ:", 
         key=f"input_{hash(eng)}", 
         disabled=st.session_state.answered, 
         placeholder="Введите перевод здесь...",
-        height=100 # Высота поля
+        height=100
     ).strip()
 
     col1, col2 = st.columns(2)
@@ -144,7 +161,10 @@ if data:
 
     st.sidebar.write(f"### Текущая серия: {st.session_state.score}")
 else:
-    st.warning("Файлы не найдены.")
+    st.warning("Файлы .txt не найдены в репозитории.")
 
+# Подпись и сердечко
 st.sidebar.markdown("---")
-st.sidebar.markdown("### 👨‍💻 Автор: Р. Андрей\nСпециально для тебя ❤️")
+st.sidebar.markdown("### 👨‍💻 Автор проекта:")
+st.sidebar.subheader("Р. Андрей")
+st.sidebar.write("Специально для тебя ❤️")
