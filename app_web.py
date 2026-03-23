@@ -21,19 +21,18 @@ def normalize(text):
     # 2. Убираем пунктуацию
     text = re.sub(r'[^\w\s]', '', text)
     
-    # 3. ИГНОРИРУЕМ ТОЛЬКО 'some' (артикли теперь ПРОВЕРЯЮТСЯ)
+    # 3. Игнорируем только 'some'
     ignored_words = {'some'}
     words = text.split()
     filtered_words = [w for w in words if w not in ignored_words]
     
-    # 4. ПРОВЕРКА СИНОНИМОВ (метро/сабвей)
+    # 4. Проверка синонимов
     synonyms = {"subway": "metro", "metro": "subway", "taxi": "cab", "cab": "taxi"}
     final_words = [synonyms.get(w, w) for w in filtered_words]
     
     return " ".join(final_words)
 
 def speak(text):
-    # Озвучиваем только первый вариант (до знака /)
     clean_audio_text = text.split('/')[0].strip()
     tts = gTTS(text=clean_audio_text, lang='en')
     ts = int(time.time())
@@ -47,18 +46,29 @@ def load_data(file_path):
         return [line.strip().split(" - ") for line in f if " - " in line]
 
 # --- ИНТЕРФЕЙС ---
+modes = ["Слова", "Неправильные глаголы", "Предложения"]
+
 if 'current_mode' not in st.session_state:
     st.session_state.current_mode = "Предложения"
 
 st.sidebar.markdown("# 📚 Меню")
-selected_mode = st.sidebar.selectbox("Выберите режим", ["Слова", "Глаголы", "Предложения"], 
-                                     index=["Слова", "Глаголы", "Предложения"].index(st.session_state.current_mode))
+selected_mode = st.sidebar.selectbox("Выберите режим", modes, 
+                                     index=modes.index(st.session_state.current_mode))
 
 if selected_mode != st.session_state.current_mode:
     st.session_state.current_mode = selected_mode
     st.session_state.current_pair = None
     st.session_state.answered = False
     st.rerun()
+
+# --- ПРАВИЛА ВВОДА (только для глаголов) ---
+if st.session_state.current_mode == "Неправильные глаголы":
+    st.sidebar.markdown("---")
+    st.sidebar.info("""
+    **Правила ввода:**
+    Напишите все 3 формы глагола через пробел. 
+    Если V2 = V3, напишите только две формы.
+    """)
 
 if 'score' not in st.session_state: st.session_state.score = 0
 if 'current_pair' not in st.session_state: st.session_state.current_pair = None
@@ -68,7 +78,14 @@ st.title("English Trainer PRO 🎓")
 st.sidebar.write("---")
 st.sidebar.title("🇬🇧 📖 ✍️")
 
-data = load_data({"Слова": "words.txt", "Глаголы": "verbs.txt", "Предложения": "sentences.txt"}[st.session_state.current_mode])
+# Маппинг названий режимов на файлы
+file_map = {
+    "Слова": "words.txt", 
+    "Неправильные глаголы": "verbs.txt", 
+    "Предложения": "sentences.txt"
+}
+
+data = load_data(file_map[st.session_state.current_mode])
 
 if data:
     if st.session_state.current_pair is None:
@@ -84,7 +101,6 @@ if data:
     with col1:
         if st.button("Проверить ✅") and not st.session_state.answered:
             st.session_state.answered = True
-            # Разделяем варианты по слэшу и проверяем каждый
             correct_options = [opt.strip() for opt in eng.split('/')]
             is_correct = any(normalize(user_answer) == normalize(opt) for opt in correct_options)
             
