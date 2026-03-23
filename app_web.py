@@ -9,14 +9,12 @@ import base64
 # Настройка страницы
 st.set_page_config(page_title="English Trainer PRO", page_icon="🎓")
 
-# --- СТИЛИЗАЦИЯ (УВЕЛИЧЕННЫЙ ШРИФТ) ---
+# --- СТИЛИЗАЦИЯ (УВЕЛИЧЕННЫЙ ШРИФТ ДЛЯ IPHONE) ---
 st.markdown("""
     <style>
-    /* Увеличиваем шрифт в поле ввода для iPhone */
     input {
         font-size: 22px !important;
     }
-    /* Увеличиваем шрифт заголовков заданий */
     .stSecondaryBlock {
         font-size: 20px !important;
     }
@@ -41,17 +39,17 @@ def normalize(text):
     return " ".join(final_words)
 
 def speak(text):
-    """Автоматическое воспроизведение через Base64 для iOS."""
+    """Воспроизведение через Base64 с попыткой автозапуска."""
     try:
         clean_audio_text = text.split('/')[0].strip()
         tts = gTTS(text=clean_audio_text, lang='en')
-        filename = f"temp_voc_{random.randint(1, 1000)}.mp3"
+        filename = f"temp_audio_{random.randint(1, 1000)}.mp3"
         tts.save(filename)
         
         with open(filename, "rb") as f:
             data = f.read()
             b64 = base64.b64encode(data).decode()
-            # Добавлен атрибут autoplay для мгновенного старта
+            # HTML с autoplay для iPhone
             md = f"""
                 <audio autoplay="true">
                     <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
@@ -68,7 +66,7 @@ def load_data(file_path):
     with open(file_path, "r", encoding="utf-8") as f:
         return [line.strip().split(" - ") for line in f if " - " in line]
 
-# --- ИНТЕРФЕЙС ---
+# --- ЛОГИКА ИНТЕРФЕЙСА ---
 modes = ["Слова", "Неправильные глаголы", "Предложения"]
 if 'current_mode' not in st.session_state: st.session_state.current_mode = "Предложения"
 
@@ -81,13 +79,13 @@ if selected_mode != st.session_state.current_mode:
     st.session_state.answered = False
     st.rerun()
 
-# --- ПРАВИЛА (ВИДНЫ ВСЕГДА) ---
-st.sidebar.markdown("---")
-st.sidebar.info("""
-**Правила ввода:**
-1. В "Глаголах": 3 формы через пробел. Если V2=V3, то две.
-2. В "Предложениях": Соблюдайте артикли (a/the).
-""")
+# --- ПРАВИЛА (ТОЛЬКО ДЛЯ ГЛАГОЛОВ) ---
+if st.session_state.current_mode == "Неправильные глаголы":
+    st.sidebar.markdown("---")
+    st.sidebar.info("""
+    **Правила ввода:**
+    Напишите 3 формы через пробел. Если V2 = V3, пишите только две.
+    """)
 
 if 'score' not in st.session_state: st.session_state.score = 0
 if 'current_pair' not in st.session_state: st.session_state.current_pair = None
@@ -107,7 +105,8 @@ if data:
     st.subheader("Переведите на английский:")
     st.info(f"👉 {rus}")
     
-    user_answer = st.text_input("Ваш ответ:", key=f"input_{hash(eng)}", disabled=st.session_state.answered, placeholder="Пишите здесь...").strip()
+    # Плейсхолдер помогает понять, куда тыкать на маленьком экране
+    user_answer = st.text_input("Ваш ответ:", key=f"input_{hash(eng)}", disabled=st.session_state.answered, placeholder="Введите перевод...").strip()
 
     col1, col2 = st.columns(2)
     with col1:
@@ -135,9 +134,9 @@ if data:
 
     st.sidebar.write(f"### Текущая серия: {st.session_state.score}")
 else:
-    st.warning("Файлы не найдены.")
+    st.warning("База данных пуста.")
 
-# --- СЕРДЕЧКО И АВТОР ---
+# --- ПОДПИСЬ ---
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 👨‍💻 Автор проекта:")
 st.sidebar.subheader("Р. Андрей")
